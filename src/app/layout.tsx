@@ -18,7 +18,11 @@ export const metadata: Metadata = {
     "Reserve the money first. Release it when verified checks pass and the client approves.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"
