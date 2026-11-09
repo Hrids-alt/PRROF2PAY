@@ -42,3 +42,5 @@ next-env.d.ts
 
 # keep the template
 !.env.example
+
+kill-tests-output.json

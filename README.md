@@ -41,3 +41,14 @@ TEST_DATABASE_URL=postgres://user:pass@localhost:5432/proof2pay_test npm test
 - The vault unlocks only when a verified webhook confirms capture part 1.
 - The event log is append-only (enforced by a database trigger).
 - Webhook captures are matched to a milestone by `invoice_id` = `p2p:<milestoneId>:<part>`. The capture call must set it.
+
+## Day 1 kill tests (PayPal sandbox)
+
+Needs: a PayPal developer account, one sandbox **Business** account (the freelancer), one sandbox **Personal** account (the buyer), and a REST app's sandbox client ID and secret.
+
+```bash
+PAYPAL_CLIENT_ID=... PAYPAL_CLIENT_SECRET=... PAYEE_EMAIL=<freelancer sandbox business email> \
+  node scripts/kill-tests.mjs
+```
+
+It prints an approval link. Open it, log in as the sandbox buyer and approve. The script then authorizes, captures twice, replays one capture, and prints PASS/FAIL for K1, K2, idempotency and the `invoice_id` the webhook relies on. Results are saved to `kill-tests-output.json` (gitignored). It refuses to run against anything that is not a sandbox URL.
