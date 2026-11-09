@@ -74,6 +74,15 @@ describe("runKillTests", () => {
     expect(order.body.purchase_units[0].payee.email_address).toBe("freelancer@test.com");
   });
 
+  it("uses the currency it is given on the order and on every capture", async () => {
+    const fake = fakePaypal();
+    await run(fake, { currency: "INR" });
+    const order = fake.seen.find((r) => r.path === "/v2/checkout/orders");
+    expect(order.body.purchase_units[0].amount.currency_code).toBe("INR");
+    const caps = fake.seen.filter((r) => r.path.endsWith("/capture"));
+    expect(caps.every((c) => c.body.amount.currency_code === "INR")).toBe(true);
+  });
+
   it("makes the first capture partial and the second final, with the amounts adding up", async () => {
     const fake = fakePaypal();
     await run(fake);

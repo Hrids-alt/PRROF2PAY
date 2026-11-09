@@ -2,7 +2,7 @@
 import { runKillTests, waitForLocalReturn } from "./killTests.mjs";
 import { writeFile } from "node:fs/promises";
 
-const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYEE_EMAIL, PAYPAL_API_BASE } = process.env;
+const { PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYEE_EMAIL, PAYPAL_API_BASE, CURRENCY } = process.env;
 if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET || !PAYEE_EMAIL) {
   console.error("Set PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET and PAYEE_EMAIL (the freelancer's sandbox business email).");
   process.exit(1);
@@ -18,6 +18,7 @@ const report = await runKillTests({
   clientId: PAYPAL_CLIENT_ID,
   clientSecret: PAYPAL_CLIENT_SECRET,
   payeeEmail: PAYEE_EMAIL,
+  currency: CURRENCY || "USD",
   waitForApproval: waitForLocalReturn(),
 });
 await writeFile("kill-tests-output.json", JSON.stringify(report, null, 2));

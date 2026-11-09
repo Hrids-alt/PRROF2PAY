@@ -18,6 +18,7 @@ export async function runKillTests({
   fetchImpl = fetch,
   waitForApproval,
   log = console.log,
+  currency = "USD",
   totalCents = 1000,
   part1Cents = 500,
 }) {
@@ -69,7 +70,7 @@ export async function runKillTests({
       purchase_units: [
         {
           reference_id: milestoneId,
-          amount: { currency_code: "USD", value: money(totalCents) },
+          amount: { currency_code: currency, value: money(totalCents) },
           payee: { email_address: payeeEmail },
         },
       ],
@@ -117,7 +118,7 @@ export async function runKillTests({
       token,
       headers: { "PayPal-Request-Id": requestId },
       body: {
-        amount: { currency_code: "USD", value: money(cents) },
+        amount: { currency_code: currency, value: money(cents) },
         invoice_id: `p2p:${milestoneId}:${part}`,
         final_capture: finalCapture,
       },
