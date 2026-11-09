@@ -106,6 +106,19 @@ describe("runKillTests", () => {
     expect(results.K1).toMatch(/Payouts/);
   });
 
+  it("does not blame the payee when PayPal rejects the order for another reason", async () => {
+    const fake = fakePaypal();
+    const orig = fake.impl;
+    fake.impl = async (url, init) =>
+      new URL(url).pathname === "/v2/checkout/orders"
+        ? new Response(JSON.stringify({ name: "UNPROCESSABLE_ENTITY", details: [{ issue: "CURRENCY_NOT_SUPPORTED" }] }), { status: 422 })
+        : orig(url, init);
+    const { results } = await run(fake);
+    expect(results.K1).toMatch(/^NOT RUN/);
+    expect(results.K1).toMatch(/CURRENCY_NOT_SUPPORTED/);
+    expect(results.K1).not.toMatch(/Payouts/);
+  });
+
   it("flags a missing invoice_id, which the webhook handler depends on", async () => {
     const { results } = await run(fakePaypal({ returnInvoice: false }));
     expect(results.invoiceIdOnCapture).toMatch(/^FAIL/);

@@ -83,9 +83,11 @@ export async function runKillTests({
     },
   });
   if (!order.ok) {
-    report.results.K1 =
-      `FAIL: PayPal refused an order with a different payee (HTTP ${order.status}). ` +
-      "Fallback: take the money on the platform account and pay the freelancer with PayPal Payouts. Paste this output to Claude.";
+    const issue = order.json.details?.[0]?.issue ?? order.json.name ?? "unknown";
+    const payeeProblem = /PAYEE|NOT_AUTHORIZED|PERMISSION/.test(issue);
+    report.results.K1 = payeeProblem
+      ? `FAIL: PayPal refused the payee (HTTP ${order.status}, ${issue}). Fallback: take the money on the platform account and pay the freelancer with PayPal Payouts. Paste this output to Claude.`
+      : `NOT RUN: PayPal rejected the order for another reason (HTTP ${order.status}, ${issue}). This does not say anything about payee routing yet. Paste this output to Claude.`;
     return report;
   }
   const approveUrl = order.json.links?.find((l) => l.rel === "payer-action" || l.rel === "approve")?.href;
