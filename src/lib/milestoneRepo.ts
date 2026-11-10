@@ -35,6 +35,7 @@ interface MilestoneRow {
   no_reply_rule: NoReplyRule;
   failed_part: 1 | 2 | null;
   acceptance_window_hours: number;
+  review_window_hours: number;
 }
 
 /**
@@ -53,7 +54,7 @@ export async function applyMilestoneEvent(
     await client.query("BEGIN");
 
     const found = await client.query<MilestoneRow>(
-      `SELECT state, gap_rounds, no_reply_rule, failed_part, acceptance_window_hours
+      `SELECT state, gap_rounds, no_reply_rule, failed_part, acceptance_window_hours, review_window_hours
          FROM milestones WHERE id = $1 FOR UPDATE`,
       [milestoneId],
     );
@@ -76,9 +77,11 @@ export async function applyMilestoneEvent(
          failed_part = $4,
          vault_unlocked_at = CASE WHEN $5 THEN now() ELSE vault_unlocked_at END,
          acceptance_window_ends_at = CASE WHEN $5 THEN now() + make_interval(hours => $6) ELSE acceptance_window_ends_at END,
+         review_deadline_at = CASE WHEN $2::text = 'awaiting_client_approval' AND $7::text <> 'awaiting_client_approval'
+                                   THEN now() + make_interval(hours => $8) ELSE review_deadline_at END,
          updated_at = now()
        WHERE id = $1`,
-      [milestoneId, ctx.state, ctx.gapRounds, ctx.failedPart, unlocks, row.acceptance_window_hours],
+      [milestoneId, ctx.state, ctx.gapRounds, ctx.failedPart, unlocks, row.acceptance_window_hours, before.state, row.review_window_hours],
     );
 
     await client.query(

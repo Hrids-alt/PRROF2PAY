@@ -1,6 +1,5 @@
 import type { Pool } from "pg";
-import { applyMilestoneEvent } from "./milestoneRepo";
-import { IllegalTransitionError } from "./stateMachine";
+import { applyCaptureOutcome } from "./captureOutcome";
 import type { WebhookStore } from "./webhook";
 
 export function createPgWebhookStore(pool: Pool): WebhookStore {
@@ -26,36 +25,8 @@ export function createPgWebhookStore(pool: Pool): WebhookStore {
       );
     },
 
-    async applyCapture({ eventId, ref, captureId, outcome }) {
-      const markDone = (client: { query: Pool["query"] }) =>
-        client.query(`UPDATE webhook_events SET processed_at = now() WHERE paypal_event_id = $1`, [eventId]);
-
-      try {
-        await applyMilestoneEvent(
-          pool,
-          ref.milestoneId,
-          outcome === "confirmed" ? { type: "capture_confirmed", part: ref.part } : { type: "capture_failed", part: ref.part },
-          "paypal_webhook",
-          async (client) => {
-            await client.query(
-              `UPDATE captures
-                  SET status = $3, paypal_capture_id = $4,
-                      confirmed_at = CASE WHEN $3 = 'confirmed' THEN now() ELSE confirmed_at END
-                WHERE milestone_id = $1 AND part = $2 AND status = 'requested'`,
-              [ref.milestoneId, ref.part, outcome, captureId],
-            );
-            await markDone(client);
-          },
-        );
-        return "applied";
-      } catch (err) {
-        // The milestone already moved on (for example a duplicate that slipped past `begin`).
-        if (err instanceof IllegalTransitionError) {
-          await markDone(pool);
-          return "ignored";
-        }
-        throw err;
-      }
+    applyCapture({ eventId, ref, captureId, outcome }) {
+      return applyCaptureOutcome(pool, { ref, captureId, outcome, actor: "paypal_webhook", eventId });
     },
   };
 }
