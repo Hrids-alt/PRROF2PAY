@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { runKillTests } from "./killTests.mjs";
 
 /** A small stand-in for PayPal, so the script's logic is tested without the network. */
-function fakePaypal({ allowSecondCapture = true, returnInvoice = true, rejectPayee = false } = {}) {
+function fakePaypal({ allowSecondCapture = true, returnInvoice = true, rejectPayee = false, captureWentTo = "Freelancer@Test.com", authorizeShowsPayee = true } = {}) {
   const captures = new Map();
   const byRequestId = new Map();
   let captured = 0;
@@ -22,7 +22,7 @@ function fakePaypal({ allowSecondCapture = true, returnInvoice = true, rejectPay
     }
     if (path === "/v2/checkout/orders/ORDER-1/authorize") {
       return json(201, {
-        purchase_units: [{ payee: { email_address: "Freelancer@Test.com" }, payments: { authorizations: [{ id: "AUTH-1" }] } }],
+        purchase_units: [{ ...(authorizeShowsPayee ? { payee: { email_address: "Freelancer@Test.com" } } : {}), payments: { authorizations: [{ id: "AUTH-1" }] } }],
       });
     }
     if (path === "/v2/payments/authorizations/AUTH-1/capture") {
@@ -30,7 +30,7 @@ function fakePaypal({ allowSecondCapture = true, returnInvoice = true, rejectPay
       if (byRequestId.has(reqId)) return json(200, byRequestId.get(reqId));
       if (captured >= 1 && !allowSecondCapture) return json(422, { name: "UNPROCESSABLE_ENTITY", details: [{ issue: "AUTHORIZATION_ALREADY_CAPTURED" }] });
       captured += 1;
-      const cap = { id: `CAP-${captured}`, status: "COMPLETED", invoice_id: body.invoice_id };
+      const cap = { id: `CAP-${captured}`, status: "COMPLETED", invoice_id: body.invoice_id, payee: { email_address: captureWentTo } };
       captures.set(cap.id, cap);
       byRequestId.set(reqId, cap);
       return json(201, cap);
@@ -117,6 +117,18 @@ describe("runKillTests", () => {
     expect(results.K1).toMatch(/^NOT RUN/);
     expect(results.K1).toMatch(/CURRENCY_NOT_SUPPORTED/);
     expect(results.K1).not.toMatch(/Payouts/);
+  });
+
+  it("passes K1 from the capture records even when the authorize reply shows no payee", async () => {
+    const { results } = await run(fakePaypal({ authorizeShowsPayee: false }));
+    expect(results.K1).toMatch(/^PASS/);
+  });
+
+  it("fails K1 when PayPal recorded the captures as paid to someone else", async () => {
+    const { results } = await run(fakePaypal({ captureWentTo: "platform@test.com" }));
+    expect(results.K1).toMatch(/^FAIL/);
+    expect(results.K1).toMatch(/platform@test.com/);
+    expect(results.K1).toMatch(/Payouts/);
   });
 
   it("flags a missing invoice_id, which the webhook handler depends on", async () => {

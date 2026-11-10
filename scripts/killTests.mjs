@@ -156,7 +156,19 @@ export async function runKillTests({
   for (const [part, c] of [[1, c1], [2, c2]]) {
     if (!c.json.id) continue;
     const got = await call(`read capture ${part}`, "GET", `/v2/payments/captures/${c.json.id}`, { token });
-    readBack.push({ part, expected: `p2p:${milestoneId}:${part}`, got: got.json.invoice_id ?? null });
+    readBack.push({
+      part,
+      expected: `p2p:${milestoneId}:${part}`,
+      got: got.json.invoice_id ?? null,
+      payee: got.json.payee?.email_address ?? null,
+    });
+  }
+  // K1, decided on who PayPal says received each capture (the authorize reply does not always show it).
+  const payees = readBack.map((r) => r.payee);
+  if (payees.length > 0 && payees.every((e) => e && e.toLowerCase() === payeeEmail.toLowerCase())) {
+    report.results.K1 = `PASS: PayPal recorded every capture as paid to ${payeeEmail}. Also confirm it in that account's Activity page.`;
+  } else if (payees.some(Boolean)) {
+    report.results.K1 = `FAIL: captures were paid to ${payees.join(", ")}, not ${payeeEmail}. Fallback: take the money on the platform account and pay the freelancer with PayPal Payouts. Paste this output to Claude.`;
   }
   report.results.invoiceIdOnCapture = readBack.every((r) => r.got === r.expected)
     ? "PASS: PayPal returns invoice_id on captures, so the webhook can find the milestone."
