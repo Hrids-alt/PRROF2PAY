@@ -1,0 +1,519 @@
+{
+  "info": {
+    "name": "Proof2Pay",
+    "description": "Sandbox demo API. Cookie-based demo sign-in; Postman keeps cookies between requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "clientUserId",
+      "value": ""
+    },
+    {
+      "key": "freelancerUserId",
+      "value": ""
+    },
+    {
+      "key": "freelancerPayeeEmail",
+      "value": ""
+    },
+    {
+      "key": "milestoneId",
+      "value": ""
+    },
+    {
+      "key": "requirementId",
+      "value": ""
+    },
+    {
+      "key": "fileId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Sign in as the client (demo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{clientUserId}}\"\n}"
+        },
+        "description": "Sets the session cookie. Get user ids from the seeded `users` table. Postman keeps the cookie for later requests."
+      }
+    },
+    {
+      "name": "2. Draft checks from rough lines",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/ai/draft-checks",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "ai",
+            "draft-checks"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"lines\": [\n    \"The site shows pricing\",\n    \"A brief explains the three plans\",\n    \"The repo has a README\"\n  ]\n}"
+        }
+      }
+    },
+    {
+      "name": "3. Post a job (signs as client)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/jobs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "jobs"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Maple pricing page\",\n  \"description\": \"Landing page\",\n  \"amount\": 100,\n  \"part1Percent\": 50,\n  \"reviewWindowHours\": 72,\n  \"acceptanceWindowHours\": 72,\n  \"noReplyRule\": \"release\",\n  \"dueAt\": \"\",\n  \"requirements\": [\n    {\n      \"text\": \"Home page shows Pricing\",\n      \"checkType\": \"http\",\n      \"checkConfig\": {\n        \"path\": \"/\",\n        \"expectStatus\": 200,\n        \"contains\": [\n          \"Pricing\"\n        ]\n      }\n    },\n    {\n      \"text\": \"Brief lists three plans\",\n      \"checkType\": \"document\",\n      \"checkConfig\": {\n        \"rubric\": \"Lists three plans\"\n      }\n    }\n  ]\n}"
+        },
+        "description": "Reply: {\"id\": \"<milestoneId>\"}. Put it in the milestoneId variable."
+      }
+    },
+    {
+      "name": "4. Sign in as the freelancer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{freelancerUserId}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "5. Freelancer sets payout email",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/me/payee",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "me",
+            "payee"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{freelancerPayeeEmail}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "6. Freelancer accepts and signs",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/m/{{milestoneId}}/sign",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "m",
+            "{{milestoneId}}",
+            "sign"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        }
+      }
+    },
+    {
+      "name": "7. Sign in as the client again",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": \"{{clientUserId}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "8. Reserve funds (returns the PayPal approve link)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/m/{{milestoneId}}/fund",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "m",
+            "{{milestoneId}}",
+            "fund"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "description": "Open approveUrl in a browser as the sandbox buyer. PayPal then returns to /api/paypal/return and the hold is created."
+      }
+    },
+    {
+      "name": "9. Freelancer uploads a file",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/m/{{milestoneId}}/upload",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "m",
+            "{{milestoneId}}",
+            "upload"
+          ]
+        },
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "fixtures/clean-brief.md"
+            },
+            {
+              "key": "kind",
+              "value": "document",
+              "type": "text"
+            }
+          ]
+        },
+        "description": "Sign in as the freelancer first."
+      }
+    },
+    {
+      "name": "10. Freelancer submits evidence",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/m/{{milestoneId}}/evidence",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "m",
+            "{{milestoneId}}",
+            "evidence"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"liveUrl\": \"https://example.onrender.com\",\n  \"repo\": \"owner/name\",\n  \"commit\": \"\"\n}"
+        },
+        "description": "Runs the checks. HTTPS and public addresses only."
+      }
+    },
+    {
+      "name": "11. Client opens a view-only preview link",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/m/{{milestoneId}}/preview-link",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "m",
+            "{{milestoneId}}",
+            "preview-link"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "description": "Returns a path. Open it in a browser: links last 5 minutes and open once."
+      }
+    },
+    {
+      "name": "12. Client approves (captures part 1)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/m/{{milestoneId}}/approve",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "m",
+            "{{milestoneId}}",
+            "approve"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "description": "Files unlock only after PayPal confirms the capture."
+      }
+    },
+    {
+      "name": "13. Client declines by naming a requirement",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/m/{{milestoneId}}/decline",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "m",
+            "{{milestoneId}}",
+            "decline"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requirementId\": \"{{requirementId}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "14. Client cites a failing requirement (acceptance window)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/m/{{milestoneId}}/cite",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "m",
+            "{{milestoneId}}",
+            "cite"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"requirementId\": \"{{requirementId}}\"\n}"
+        }
+      }
+    },
+    {
+      "name": "15. Download a file (after unlock)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/m/{{milestoneId}}/files/{{fileId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "m",
+            "{{milestoneId}}",
+            "files",
+            "{{fileId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "16. Evidence Pack",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/m/{{milestoneId}}/evidence-pack",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "m",
+            "{{milestoneId}}",
+            "evidence-pack"
+          ]
+        }
+      }
+    },
+    {
+      "name": "17. PayPal webhook (needs real PayPal signature headers)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/webhooks/paypal",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "webhooks",
+            "paypal"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": \"WH-EXAMPLE\",\n  \"event_type\": \"PAYMENT.CAPTURE.COMPLETED\",\n  \"resource\": {\n    \"id\": \"CAP-EXAMPLE\",\n    \"invoice_id\": \"p2p:{{milestoneId}}:1\"\n  }\n}"
+        },
+        "description": "Without valid PayPal signature headers this returns 400/401, which is correct. Use PayPal's Webhook Simulator or a real capture."
+      }
+    },
+    {
+      "name": "18. Tick (cron ping)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/tick",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "tick"
+          ]
+        },
+        "description": "Header Authorization: Bearer <CRON_SECRET>."
+      }
+    }
+  ]
+}

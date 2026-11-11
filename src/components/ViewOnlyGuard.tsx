@@ -54,7 +54,7 @@ export function ViewOnlyGuard({ milestoneId, watermark, children }: { milestoneI
     };
   }, [milestoneId]);
 
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='360' height='200'><text x='20' y='110' fill='rgba(0,0,0,0.12)' font-size='18' font-family='sans-serif' transform='rotate(-22 180 100)'>${watermark.replace(/[<>&']/g, "")}</text></svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='560' height='220'><text x='20' y='130' fill='rgba(0,0,0,0.12)' font-size='18' font-family='sans-serif' transform='rotate(-18 280 110)'>${watermark.replace(/[<>&']/g, "")}</text></svg>`;
   return (
     <div className="view-only relative">
       {children}

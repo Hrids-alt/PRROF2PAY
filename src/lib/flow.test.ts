@@ -16,6 +16,8 @@ import { assertSafeUrl } from "./ssrf";
 import type { PaypalClient } from "./paypal";
 import { filesUnlocked, getCaptures, getEvents, getLatestVerdicts, getMilestone, getReputation } from "./read";
 import { toAppError } from "./errors";
+import { createPreviewLink, loadPreviewSession, logPreviewView, openPreview } from "./preview";
+import { signToken } from "./tokens";
 import * as svc from "./service";
 import { handleWebhook } from "./webhook";
 import { createPgWebhookStore } from "./webhookPgStore";
@@ -233,6 +235,43 @@ describe.skipIf(!url)("full flow", () => {
     expect(Number(after)).toBe(Number(before) + 1);
     expect((await getMilestone(pool, id))!.state).toBe("awaiting_client_approval"); // still verified: back to the gate
     expect(w.paypal.state.captureCalls).toBe(0);
+  });
+
+  it("PREVIEW: a signed link opens once, is tied to the client, is logged, and ends with the decision", async () => {
+    process.env.SESSION_SECRET = "test-secret-0123456789";
+    const w = await world();
+    const other = await world();
+    const id = await toFunded(w);
+    await expect(createPreviewLink(w.deps, w.client, id)).rejects.toThrow(/while you are deciding/);
+    await submitGood(w, id);
+    await expect(createPreviewLink(w.deps, w.freelancer, id)).rejects.toThrow(/Only the client/);
+
+    const { path } = await createPreviewLink(w.deps, w.client, id);
+    const token = decodeURIComponent(path.split("t=")[1]);
+    await expect(openPreview(w.deps, other.client, token, undefined)).rejects.toThrow(/different person/);
+    await expect(openPreview(w.deps, w.client, token + "x", undefined)).rejects.toThrow(/expired/);
+    await expect(openPreview(w.deps, w.client, signToken({ m: id, u: w.client.id, s: "nope", exp: 1 }), undefined)).rejects.toThrow(/expired/);
+
+    const first = await openPreview(w.deps, w.client, token, undefined);
+    expect(first.claimed).toBe(true);
+    await expect(openPreview(w.deps, w.client, token, undefined)).rejects.toThrow(/already open in another session/); // a second browser
+    expect((await openPreview(w.deps, w.client, token, first.sid)).claimed).toBe(false); // same browser reloads
+
+    expect(await loadPreviewSession(w.deps, w.client, first.sid, id)).not.toBeNull();
+    expect(await loadPreviewSession(w.deps, w.client, undefined, id)).toBeNull();
+    expect(await loadPreviewSession(w.deps, w.client, "wrong", id)).toBeNull();
+    expect(await loadPreviewSession(w.deps, w.client, first.sid, "")).toBeNull(); // malformed id is a refusal, not an error
+    expect(await loadPreviewSession(w.deps, other.client, first.sid, id)).toBeNull();
+
+    await logPreviewView(w.deps, w.client, id, { sid: first.sid, section: "report", seconds: 12 });
+    await logPreviewView(w.deps, w.client, id, { sid: first.sid, section: "x", seconds: 99999 });
+    const types = (await getEvents(pool, id)).map((e) => e.type);
+    for (const t of ["preview.link_created", "preview.opened", "preview.second_session_refused", "preview.viewed"]) expect(types).toContain(t);
+    const views = (await getEvents(pool, id)).filter((e) => e.type === "preview.viewed");
+    expect(views[1].data.seconds).toBe(3600); // capped
+
+    await svc.approve(w.deps, w.client, id);
+    expect(await loadPreviewSession(w.deps, w.client, first.sid, id)).toBeNull(); // the preview ends once they decide
   });
 
   it("only the right person can act", async () => {

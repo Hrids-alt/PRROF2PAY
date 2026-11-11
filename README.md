@@ -8,31 +8,46 @@ Built for the PayPal AI Hackathon. Sandbox only. Not legal advice.
 
 ```bash
 npm ci
-cp .env.example .env.local        # fill in DATABASE_URL and PayPal sandbox credentials
-DATABASE_URL=... node scripts/migrate.mjs
+cp .env.example .env.local        # DATABASE_URL, SESSION_SECRET, APP_URL, PayPal sandbox keys
+npm run migrate
+npm run seed                      # demo users (@demo.test) and 3 open jobs
 npm run dev
 ```
+
+Sign in with "Sign in (demo)" and pick an account: `cleo`/`acme` are clients, `fiona`/`sam` are freelancers. This is a demo sign-in, not real authentication.
+
+**Without PayPal or an AI key** (offline demo): `npm run fake` starts a stand-in for PayPal and the AI on port 4010 (it also sends the webhooks). Start the app with `PAYPAL_API_BASE=http://127.0.0.1:4010 AI_BASE_URL=http://127.0.0.1:4010 AI_API_KEY=x`. It is not PayPal; use real sandbox keys for the real demo.
+
+## The flow
+
+1. Client posts a job with checkable requirements (AI or rules help turn vague lines into checks). Freelancer signs the same contract hash.
+2. Client reserves the money: a PayPal AUTHORIZE order paying the freelancer. Nothing is captured.
+3. Freelancer uploads files and a live URL / repo. The platform runs the checks (HTTP, repo, document via AI judge, optional browser, needs-a-person). Gaps go back to the freelancer.
+4. When checks pass, the client sees a view-only preview and decides. Approve captures part 1. Files unlock only after PayPal's webhook confirms the capture.
+5. Acceptance window: the client can cite a failing requirement; otherwise part 2 is captured and the job closes. Every step is in the event log and the downloadable Evidence Pack.
+
+Background loop (`TICK_SECONDS`) handles deadlines, re-authorizing the hold before the 29-day limit, stuck work, and lost webhooks (it replays captures with the same request id).
 
 ## Tests
 
 ```bash
-npm test                # unit tests (no database needed)
+npm test                # unit tests
 npm run typecheck
-
-# Integration tests need a migrated Postgres:
-TEST_DATABASE_URL=postgres://user:pass@localhost:5432/proof2pay_test npm test
+TEST_DATABASE_URL=postgres://user:pass@localhost:5432/proof2pay_test npm test   # adds the 19 end-to-end flow tests
 ```
 
-## What exists so far (Day 1)
+## Deploy (Render)
 
-| Piece | File |
-| --- | --- |
-| Milestone state machine (pure, no I/O) | `src/lib/stateMachine.ts` |
-| Transactions that apply transitions and log events | `src/lib/milestoneRepo.ts` |
-| SSRF guard and `safeFetch` | `src/lib/ssrf.ts` |
-| PayPal webhook handler (signature check, idempotency) | `src/lib/webhook.ts`, `src/lib/webhookPgStore.ts` |
-| Webhook route | `src/app/api/webhooks/paypal/route.ts` |
-| Postgres schema | `db/migrations/001_init.sql` |
+`render.yaml` is a starting point. Use an always-on web instance (free ones sleep and miss webhooks) and a database that lasts past judging. Set `APP_URL` to the public URL, then in the PayPal developer dashboard add a webhook for `<APP_URL>/api/webhooks/paypal` (events `PAYMENT.CAPTURE.COMPLETED/DENIED/REFUNDED`) and put its id in `PAYPAL_WEBHOOK_ID`. Run `npm run seed` with `SEED_FREELANCER_PAYEE=<US sandbox business email>` so seeded jobs pay a real sandbox account. Use US sandbox accounts and USD: India-based sandbox accounts cannot take USD.
+
+A Postman collection is in `postman_collection.json`.
+
+## Honest limits
+
+- Screen recording of the view-only preview cannot be prevented; it is watermarked and logged instead.
+- Files are stored in Postgres (not S3). One milestone per job. No contract amendments. Demo sign-in only.
+- The job board is a plain table. Repo checks read public repos through the GitHub API.
+- Tested offline against a fake PayPal; the real-sandbox app flow, webhook on a public URL, and cloud browser checks still need a run on your side.
 
 ## Money rules the code enforces
 

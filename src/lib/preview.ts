@@ -60,7 +60,7 @@ export interface PreviewSession {
 
 /** Validates the cookie session for the preview page and the heartbeat. Returns null when not allowed. */
 export async function loadPreviewSession(deps: Deps, actor: Actor, sid: string | undefined, milestoneId: string): Promise<PreviewSession | null> {
-  if (!sid) return null;
+  if (!sid || !/^[0-9a-f-]{36}$/i.test(milestoneId)) return null;
   const { rows } = await deps.pool.query(
     `SELECT 1 FROM preview_sessions WHERE sid = $1 AND milestone_id = $2 AND user_id = $3 AND claimed_at > now() - make_interval(mins => $4)`,
     [sid, milestoneId, actor.id, SESSION_MINUTES],
