@@ -1,13 +1,13 @@
-# Render blueprint. Adjust plans: the web service must be always-on (free instances sleep after
-# 15 minutes and would miss PayPal webhooks), and the database must outlast the judging period
-# (Render free Postgres expires after 30 days).
+# Render blueprint on FREE plans (no cost). Caveats: free web instances sleep after 15 minutes
+# idle (ping /login every 5 min with a free uptime monitor), and free Render Postgres expires after
+# 30 days (use a free Neon database instead, or recreate and re-seed before judging).
+# Migrations are run by hand: DATABASE_URL=... npm run migrate && npm run seed
 services:
   - type: web
     name: proof2pay
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm ci && npm run build
-    preDeployCommand: npm run migrate
     startCommand: npm start
     healthCheckPath: /login
     envVars:
@@ -33,4 +33,4 @@ services:
         value: "true"
 databases:
   - name: proof2pay-db
-    plan: basic-256mb
+    plan: free
