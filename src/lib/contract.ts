@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { parseSteps } from "./browser";
 
 export const CHECK_TYPES = ["http", "browser", "repo", "document", "needs_human"] as const;
 export type CheckType = (typeof CHECK_TYPES)[number];
@@ -117,4 +118,47 @@ export function draftRequirementsHeuristic(lines: string[]): RequirementInput[] 
       }
       return { text, checkType: "needs_human" as const, checkConfig: {} };
     });
+}
+
+const strArr = (v: unknown, maxItems: number, maxLen: number): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length <= maxLen).slice(0, maxItems) : [];
+
+/** Keeps only the settings each check type understands, so stored configs are always well-formed. */
+export function sanitizeConfig(type: CheckType, raw: unknown): Record<string, unknown> {
+  const c = (typeof raw === "object" && raw !== null && !Array.isArray(raw) ? raw : {}) as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  switch (type) {
+    case "http": {
+      if (typeof c.path === "string" && c.path.startsWith("/") && c.path.length <= 200) out.path = c.path;
+      if (typeof c.url === "string" && /^https:\/\//i.test(c.url) && c.url.length <= 300) out.url = c.url;
+      if (typeof c.expectStatus === "number" && Number.isInteger(c.expectStatus) && c.expectStatus >= 100 && c.expectStatus <= 599) out.expectStatus = c.expectStatus;
+      const contains = strArr(c.contains, 10, 100);
+      const notContains = strArr(c.notContains, 10, 100);
+      if (contains.length) out.contains = contains;
+      if (notContains.length) out.notContains = notContains;
+      return out;
+    }
+    case "repo": {
+      const files = strArr(c.fileExists, 10, 150).filter((f) => !f.includes("..") && !f.startsWith("/"));
+      if (files.length) out.fileExists = files;
+      if (Array.isArray(c.fileContains)) {
+        const fc = c.fileContains
+          .filter((x): x is { path: string; text: string } => typeof x?.path === "string" && typeof x?.text === "string" && !x.path.includes("..") && x.text.length <= 100)
+          .slice(0, 5)
+          .map((x) => ({ path: x.path, text: x.text }));
+        if (fc.length) out.fileContains = fc;
+      }
+      return out;
+    }
+    case "document":
+      if (typeof c.rubric === "string" && c.rubric.trim()) out.rubric = c.rubric.trim().slice(0, 500);
+      return out;
+    case "browser": {
+      const steps = parseSteps(c.steps);
+      if (steps) out.steps = steps;
+      return out;
+    }
+    default:
+      return out;
+  }
 }
