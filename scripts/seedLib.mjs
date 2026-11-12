@@ -41,6 +41,15 @@ export const USERS = [
 
 export const JOBS = [
   {
+    owner: "cleo@demo.test",
+    title: "Demo: site goes live",
+    description: "The freelancer's live site must load and show the sign-in page.",
+    amountCents: 5000, currency: "USD", part1Percent: 50, reviewWindowHours: 24, acceptanceWindowHours: 24, noReplyRule: "release", dueAt: null,
+    requirements: [
+      { text: "The live site loads and shows Sign in", checkType: "http", checkConfig: { path: "/login", expectStatus: 200, contains: ["Sign in"] } },
+    ],
+  },
+  {
     owner: "acme@demo.test",
     title: "Maple & Co pricing page",
     description: "A one-page site with a pricing table for three plans, plus a short written brief.",
